@@ -155,7 +155,7 @@ This demonstration analyzes a single job role (Software Engineer). In actual eng
 
 **Email:** alicialee53@gmail.com
 **LinkedIn:** https://www.linkedin.com/in/aliciajlee/
-**Website:** Journey Analytics LLC -  https://www.journeyanalytic.com/
+
 
 ## License
 
