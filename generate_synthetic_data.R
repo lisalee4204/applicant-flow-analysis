@@ -126,14 +126,9 @@ generate_applicant_flow_data <- function(n_applicants = 100,
 # Generate data
 applicants_raw <- generate_applicant_flow_data(n_applicants = 100, 
                                                role = "Software Engineer")
-# Create data directory if it doesn't exist
-if (!dir.exists("data")) {
-  dir.create("data")
-  cat("✅ Created 'data' directory\n")
-}
 
 # Save
-write.csv(applicants_raw, "data/synthetic_applicants.csv", row.names = FALSE)
+write.csv(applicants_raw, "synthetic_applicants.csv", row.names = FALSE)
 
 cat("✅ Generated", nrow(applicants_raw), "synthetic applicant records\n")
 cat("Role:", unique(applicants_raw$role), "\n")
@@ -143,3 +138,4 @@ cat("\nRace/ethnicity distribution:\n")
 print(table(applicants_raw$race_ethnicity))
 
 cat("\n⚠️  CONFIDENTIALITY NOTE: This is entirely fictional data for demonstration only\n")
+
