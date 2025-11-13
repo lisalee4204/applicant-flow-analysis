@@ -35,14 +35,14 @@ The analysis follows EEOC Uniform Guidelines on Employee Selection Procedures (U
 
 ## What's Demonstrated
 
-✅ Multi-stage applicant flow analysis (Screen → Interview → Assessment → Selection)  
-✅ Gender and race/ethnicity analysis per EEOC standards  
-✅ Contingency tables with frequency/expected/deviation/percentages  
-✅ Selection rate and impact ratio calculations  
-✅ Statistical significance testing (Fisher's exact)  
-✅ Adverse impact determination (4/5ths rule)  
-✅ Stratification testing (Breslow-Day + Mantel-Haenszel)  
-✅ Professional reporting format with interpretation
+- Multi-stage applicant flow analysis (Screen → Interview → Assessment → Selection)  
+- Gender and race/ethnicity analysis per EEOC standards  
+- Contingency tables with frequency/expected/deviation/percentages  
+- Selection rate and impact ratio calculations  
+- Statistical significance testing (Fisher's exact)  
+- Adverse impact determination (4/5ths rule)  
+- Stratification testing (Breslow-Day + Mantel-Haenszel)  
+- Professional reporting format with interpretation
 
 ## Repository Structure
 
