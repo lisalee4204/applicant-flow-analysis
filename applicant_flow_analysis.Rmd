@@ -1,0 +1,381 @@
+---
+title: "Applicant Flow Analysis - Software Engineer"
+author: "Alicia Lee, Ph.D."
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6
+)
+
+# Set working directory to project root if running from analysis folder
+if(basename(getwd()) == "analysis") {
+  setwd("..")
+}
+```
+
+## Overview
+
+This analysis demonstrates a full applicant flow review using synthetic data for a Software Engineer role. It includes stage-by-stage comparisons, selection rates, impact ratios, and Fisher’s exact tests for small samples.
+
+The workflow includes:
+
+Synthetic applicant data with realistic demographic patterns
+
+Multi-stage funnel analysis (Screen → Interview → Assessment → Selection)
+
+EEOC/UGESP-aligned impact ratio and statistical significance testing
+
+Clear tables and interpretations identifying potential adverse impact
+
+**Confidentiality Note:** All data is synthetically generated for demonstration purposes. Actual client work remains confidential.
+
+```{r load_everything, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(tidyr)
+library(DescTools)
+
+# Source custom functions
+source("applicant_flow_functions.R")
+
+# Load synthetic applicant data
+applicants <- read.csv("synthetic_applicants.csv")
+```
+
+**Dataset:** `r nrow(applicants)` applicants for `r unique(applicants$role)` role
+
+**Gender Distribution:**
+
+```{r gender_dist, echo=FALSE}
+gender_table <- as.data.frame(table(applicants$gender, useNA = "always"))
+colnames(gender_table) <- c("Gender", "Count")
+kable(gender_table, align = c("l", "r"), row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), 
+                full_width = FALSE, position = "left")
+```
+
+**Race/Ethnicity Distribution:**
+
+```{r race_dist, echo=FALSE}
+race_table <- as.data.frame(table(applicants$race_ethnicity, useNA = "always"))
+colnames(race_table) <- c("Race/Ethnicity", "Count")
+kable(race_table, align = c("l", "r"), row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), 
+                full_width = FALSE, position = "left")
+```
+
+## Data Quality
+
+```{r data_quality, echo=FALSE}
+pct_unknown_gender <- mean(applicants$gender == "Unknown") * 100
+pct_unknown_race <- mean(applicants$race_ethnicity == "Unknown") * 100
+
+advancement <- data.frame(
+  Stage = c("Resume Screening", "Interview", "Technical Assessment", "Final Selection"),
+  N_Advanced = c(
+    sum(applicants$screen_passed),
+    sum(applicants$interview_passed),
+    sum(applicants$assessment_passed),
+    sum(applicants$selected)
+  ),
+  Pct_Advanced = paste0(c(
+    round(mean(applicants$screen_passed) * 100, 1),
+    round(mean(applicants$interview_passed) * 100, 1),
+    round(mean(applicants$assessment_passed) * 100, 1),
+    round(mean(applicants$selected) * 100, 1)
+  ), "%")
+)
+```
+
+- Unknown gender: `r round(pct_unknown_gender, 1)`%
+- Unknown race/ethnicity: `r round(pct_unknown_race, 1)`%
+
+**Advancement by Stage:**
+
+```{r advancement_table, echo=FALSE}
+kable(advancement, 
+      col.names = c("Stage", "N Advanced", "% Advanced"),
+      align = c("l", "r", "r"), row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = FALSE, position = "left")
+```
+
+---
+
+# GENDER ANALYSIS
+
+```{r prepare_gender_data, include=FALSE}
+interview_data <- applicants %>% filter(screen_passed == 1)
+assessment_data <- applicants %>% filter(interview_passed == 1)
+selection_data <- applicants %>% filter(assessment_passed == 1)
+
+screen_analysis_gender <- create_flow_analysis(
+  data = applicants, group_var = "gender", outcome_var = "screen_passed",
+  stage_name = "Resume Screening", role_name = "Software Engineer"
+)
+
+interview_analysis_gender <- create_flow_analysis(
+  data = interview_data, group_var = "gender", outcome_var = "interview_passed",
+  stage_name = "Interview", role_name = "Software Engineer"
+)
+
+assessment_analysis_gender <- create_flow_analysis(
+  data = assessment_data, group_var = "gender", outcome_var = "assessment_passed",
+  stage_name = "Technical Assessment", role_name = "Software Engineer"
+)
+
+selection_analysis_gender <- create_flow_analysis(
+  data = selection_data, group_var = "gender", outcome_var = "selected",
+  stage_name = "Final Selection", role_name = "Software Engineer"
+)
+```
+
+## Summary Across All Stages
+
+```{r gender_summary, echo=FALSE}
+stages <- c("Screen", "Interview", "Assessment", "Selection")
+analyses <- list(screen_analysis_gender, interview_analysis_gender,
+                assessment_analysis_gender, selection_analysis_gender)
+
+summary_data <- data.frame()
+
+for (i in seq_along(stages)) {
+  analysis <- analyses[[i]]
+  for (group in names(analysis$impact_ratios)) {
+    if (group != "Unknown") {
+      summary_data <- rbind(summary_data, data.frame(
+        Stage = stages[i],
+        Group = group,
+        `Selection Rate (%)` = round(analysis$selection_rates[group] * 100, 1),
+        `Impact Ratio` = round(analysis$impact_ratios[group], 2),
+        `Fisher's p` = round(analysis$fisher_p, 4),
+        `AI Flag` = ifelse(analysis$impact_ratios[group] < 0.80, "TRUE", "FALSE"),
+        check.names = FALSE
+      ))
+    }
+  }
+}
+
+kable(summary_data, align = c("l", "l", "r", "r", "r", "c"), row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = FALSE, position = "left") %>%
+  row_spec(which(summary_data$`AI Flag` == "TRUE"), background = "#fff3cd")
+```
+
+```{r gender_visualization, echo=FALSE, fig.width=10, fig.height=6}
+plot_data <- summary_data %>% filter(Group %in% c("Female", "Male"))
+
+if(nrow(plot_data) > 0) {
+  ggplot(plot_data,
+         aes(x = factor(Stage, levels = stages), 
+             y = `Selection Rate (%)`, color = Group, group = Group)) +
+    geom_line(size = 1.2) +
+    geom_point(size = 3) +
+    geom_hline(yintercept = 50, linetype = "dashed", alpha = 0.3) +
+    labs(title = "Selection Rates by Gender Across Hiring Stages",
+         subtitle = "Software Engineer Role",
+         y = "Selection Rate (%)", x = "") +
+    theme_minimal() +
+    theme(plot.title = element_text(face = "bold", size = 14),
+          legend.position = "top") +
+    scale_color_manual(values = c("Female" = "#FF4688", "Male" = "#00BCD7"))
+}
+```
+
+```{r findings_gender, echo=FALSE, results='asis'}
+stages_with_ai <- summary_data %>% 
+  filter(`AI Flag` == "TRUE") %>% 
+  pull(Stage) %>% 
+  unique()
+
+if(length(stages_with_ai) > 0) {
+  cat("**Key Findings:**\n\n")
+  cat("- Adverse impact (IR < 0.80) identified at:", paste(stages_with_ai, collapse = ", "), "\n")
+  
+  if("Screen" %in% stages_with_ai | "Interview" %in% stages_with_ai) {
+    cat("- Disparities emerge early in the hiring process\n")
+  } else {
+    cat("- Disparities emerge at later decision stages\n")
+  }
+  
+  if("Selection" %in% stages_with_ai) {
+    cat("- Final selection stage shows strongest disparity - intervention recommended at offer decision point\n")
+  }
+} else {
+  cat("**Key Findings:**\n\n")
+  cat("- No adverse impact identified across any hiring stage\n")
+  cat("- Selection rates show parity between groups\n")
+}
+```
+
+## Detailed Stage Analysis
+
+### Stage 1: Resume Screening
+
+```{r gender_screen, echo=FALSE, results='asis'}
+format_flow_table(screen_analysis_gender, format = "html")
+cat("\n\n**Interpretation:**\n\n")
+cat(screen_analysis_gender$interpretation)
+```
+
+### Stage 2: Interview
+
+```{r gender_interview, echo=FALSE, results='asis'}
+format_flow_table(interview_analysis_gender, format = "html")
+cat("\n\n**Interpretation:**\n\n")
+cat(interview_analysis_gender$interpretation)
+```
+
+### Stage 3: Technical Assessment
+
+```{r gender_assessment, echo=FALSE, results='asis'}
+format_flow_table(assessment_analysis_gender, format = "html")
+cat("\n\n**Interpretation:**\n\n")
+cat(assessment_analysis_gender$interpretation)
+```
+
+### Stage 4: Final Selection
+
+```{r gender_selection, echo=FALSE, results='asis'}
+format_flow_table(selection_analysis_gender, format = "html")
+cat("\n\n**Interpretation:**\n\n")
+cat(selection_analysis_gender$interpretation)
+```
+
+---
+
+# RACE/ETHNICITY ANALYSIS
+
+```{r prepare_race_data, include=FALSE}
+screen_analysis_race <- create_flow_analysis(
+  data = applicants, group_var = "race_ethnicity", outcome_var = "screen_passed",
+  stage_name = "Resume Screening", role_name = "Software Engineer"
+)
+
+interview_analysis_race <- create_flow_analysis(
+  data = interview_data, group_var = "race_ethnicity", outcome_var = "interview_passed",
+  stage_name = "Interview", role_name = "Software Engineer"
+)
+
+assessment_analysis_race <- create_flow_analysis(
+  data = assessment_data, group_var = "race_ethnicity", outcome_var = "assessment_passed",
+  stage_name = "Technical Assessment", role_name = "Software Engineer"
+)
+
+selection_analysis_race <- create_flow_analysis(
+  data = selection_data, group_var = "race_ethnicity", outcome_var = "selected",
+  stage_name = "Final Selection", role_name = "Software Engineer"
+)
+```
+
+## Summary Across All Stages
+
+```{r race_summary, echo=FALSE}
+race_analyses <- list(screen_analysis_race, interview_analysis_race,
+                     assessment_analysis_race, selection_analysis_race)
+
+race_summary_data <- data.frame()
+
+for (i in seq_along(stages)) {
+  analysis <- race_analyses[[i]]
+  for (group in names(analysis$impact_ratios)) {
+    if (group != "Unknown") {
+      race_summary_data <- rbind(race_summary_data, data.frame(
+        Stage = stages[i],
+        Group = group,
+        `Selection Rate (%)` = round(analysis$selection_rates[group] * 100, 1),
+        `Impact Ratio` = round(analysis$impact_ratios[group], 2),
+        `Fisher's p` = round(analysis$fisher_p, 4),
+        `AI Flag` = ifelse(analysis$impact_ratios[group] < 0.80, "TRUE", "FALSE"),
+        check.names = FALSE
+      ))
+    }
+  }
+}
+
+kable(race_summary_data, align = c("l", "l", "r", "r", "r", "c"), row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = FALSE, position = "left") %>%
+  row_spec(which(race_summary_data$`AI Flag` == "TRUE"), background = "#fff3cd")
+```
+
+```{r findings_race, echo=FALSE, results='asis'}
+race_stages_with_ai <- race_summary_data %>% 
+  filter(`AI Flag` == "TRUE") %>% 
+  pull(Stage) %>% 
+  unique()
+
+if(length(race_stages_with_ai) > 0) {
+  affected_groups <- unique((race_summary_data %>% filter(`AI Flag` == "TRUE"))$Group)
+  cat("**Key Findings:**\n\n")
+  cat("- Adverse impact identified at:", paste(race_stages_with_ai, collapse = ", "), "\n")
+  cat("- Groups affected:", paste(affected_groups, collapse = ", "), "\n")
+} else {
+  cat("**Key Findings:**\n\n")
+  cat("- No adverse impact identified across any hiring stage\n")
+}
+```
+
+## Detailed Stage Analysis
+
+### Stage 1: Resume Screening
+
+```{r race_screen, echo=FALSE, results='asis'}
+format_flow_table(screen_analysis_race, format = "html")
+cat("\n\n**Interpretation:**\n\n")
+cat(screen_analysis_race$interpretation)
+```
+
+### Stage 2: Interview
+
+```{r race_interview, echo=FALSE, results='asis'}
+format_flow_table(interview_analysis_race, format = "html")
+cat("\n\n**Interpretation:**\n\n")
+cat(interview_analysis_race$interpretation)
+```
+
+### Stage 3: Technical Assessment
+
+```{r race_assessment, echo=FALSE, results='asis'}
+format_flow_table(assessment_analysis_race, format = "html")
+cat("\n\n**Interpretation:**\n\n")
+cat(assessment_analysis_race$interpretation)
+```
+
+### Stage 4: Final Selection
+
+```{r race_selection, echo=FALSE, results='asis'}
+format_flow_table(selection_analysis_race, format = "html")
+cat("\n\n**Interpretation:**\n\n")
+cat(selection_analysis_race$interpretation)
+```
+
+---
+
+# METHODOLOGY
+
+This analysis demonstrates:
+
+1. Stage-by-stage funnel analysis
+2. Selection rates and impact ratios per EEOC/UGESP standards
+3. Fisher's exact test for statistical significance
+4. Expected values and deviation analysis
+5. Contingency table approach (Frequency/Expected/Deviation/Row %/Col %)
+6. Highest-performing group as reference
+7. 2% threshold handling for small samples
+
+**Confidentiality:** All data synthetically generated. No actual employer or applicant information included.
