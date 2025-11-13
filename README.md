@@ -90,7 +90,7 @@ Determines if stratified analysis is needed:
 
 ### `format_flow_table()`
 Publication-ready table formatting:
-- EEOC-style layout (Frequency/Expected/Deviation/Row Pct/Col Pct)
+- Frequency, expected, deviation 
 - HTML/LaTeX/Markdown output
 - Automatic adverse impact highlighting
 
@@ -123,11 +123,11 @@ This demonstration shows how multi-stage applicant flow analysis identifies wher
 
 ## Confidentiality Note
 
-All data in this repository is entirely synthetic and created for demonstration purposes only. My actual client work (EEOC investigations, law firm engagements, corporate audits) remains confidential per ethical and legal obligations.
+All data in this repository is entirely synthetic and created for demonstration purposes only. No real applicant or employer records are included.
 
 ## Adaptability
 
-While this demonstration shows EEOC-style investigation methodology for hiring discrimination, the same analytical framework applies to:
+This methodology applies to:
 - Title VII hiring, promotion, discharge, and compensation analyses
 - Algorithmic fairness assessments
 - Pay equity analyses
@@ -153,7 +153,7 @@ This demonstration analyzes a single job role (Software Engineer). In actual eng
 **Alicia Lee, PhD**  
   Employment discrimination and quantitative fairness specialist.
 
-**Contact:** alicialee53@gmail.com
+**Email:** alicialee53@gmail.com
 **LinkedIn:** https://www.linkedin.com/in/aliciajlee/
 **Website:** Journey Analytics LLC -  https://www.journeyanalytic.com/
 
@@ -161,7 +161,3 @@ This demonstration analyzes a single job role (Software Engineer). In actual eng
 
 MIT License - This code is provided for demonstration and educational purposes.
 
-
----
-
-**Note to potential clients:** This demonstrates proven methodology adaptable to your specific audit requirements. The synthetic data approach protects my clients' confidentiality while showcasing technical competence and analytical rigor.
